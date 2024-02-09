@@ -24,7 +24,7 @@ public class StackInterpreterTests {
     return outStream.toString(UTF_8).replace("\r\n", "\n");
   }
 
-  /*
+
   @Tag("Q2") @Test
   public void helloString() {
     assertEquals("", execute("\"hello\"\n"));
@@ -395,5 +395,5 @@ public class StackInterpreterTests {
                 object.foo(42);
                 object.foo(42);
                 """));
-  }*/
+  }
 }
