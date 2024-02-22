@@ -45,8 +45,8 @@ public class RT {
   public static Object bsm_const(Lookup lookup, String name, Class<?> type, int constant) {
     return constant;
   }
-
-  public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) {
+/*
+  public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) {//NON OPTI
     //throw new UnsupportedOperationException("TODO bsm_funcall");
     // take GET_MH method handle
     MethodHandle combiner = GET_MH;
@@ -60,6 +60,53 @@ public class RT {
     var target = MethodHandles.foldArguments(invoker, combiner);
     // create a constant callsite
     return  new ConstantCallSite(target);
+  }*/
+  public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) {//OPTIMISER
+    return new InliningCache(type);
+  }
+
+  private static class InliningCache extends MutableCallSite {//OPTIMISER
+    private static final MethodHandle SLOW_PATH, TEST;
+    static {
+      var lookup = MethodHandles.lookup();
+      try {
+        SLOW_PATH = lookup.findVirtual(InliningCache.class, "slowPath", methodType(MethodHandle.class, Object.class, Object.class));
+        TEST = lookup.findStatic(InliningCache.class, "test", methodType(boolean.class, Object.class, Object.class));
+      } catch (NoSuchMethodException | IllegalAccessException e) {
+        throw new AssertionError(e);
+      }
+    }
+
+    public InliningCache(MethodType type) {
+      super(type);
+      setTarget(MethodHandles.foldArguments(MethodHandles.exactInvoker(type), SLOW_PATH.bindTo(this)));
+    }
+
+    private static boolean test(Object qualifier1, Object qualifier2) {
+      return qualifier1 == qualifier2;
+    }
+
+    private MethodHandle slowPath(Object qualifier, Object receiver) {
+      var jsObject = (JSObject)qualifier;
+      var mh = jsObject.getMethodHandle();
+      var varargs = mh.isVarargsCollector();
+
+      if(!varargs && type().parameterCount() != mh.type().parameterCount() + 1) {
+        throw new Failure("wrong number of arguments, should be " + (mh.type().parameterCount() - 1));//-1 à cause du this
+      }
+
+      var target = MethodHandles.dropArguments(mh, 0, Object.class);
+      target = target.withVarargs(varargs);
+      target = target.asType(type());
+
+      var test = TEST.bindTo(jsObject);
+
+      var fallback = new InliningCache(type()).dynamicInvoker();
+      var guard = MethodHandles.guardWithTest(test, target, fallback);
+      setTarget(guard);
+
+      return target;
+    }
   }
 
   public static CallSite bsm_lookup(Lookup lookup, String name, MethodType type, String functionName) {

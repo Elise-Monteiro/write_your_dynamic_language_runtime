@@ -228,7 +228,7 @@ public class ByteCodeRewriter {
                 mv.visitVarInsn(ALOAD, (int) slotOrUndefined);
             }
         }
-        case Fun fun -> {//il manque le check du nombre d'argument
+        case Fun fun -> {//il manque le check du nombre d'argument problème quand il y a pas l'optimisation
           Optional<String> optName = fun.optName();
           List<String> parameters = fun.parameters();
           Block body = fun.body();
@@ -269,11 +269,23 @@ public class ByteCodeRewriter {
             mv.visitLabel(endLabel);
         }
         case New(Map<String, Expr> initMap, int lineNumber) -> {
-          throw new UnsupportedOperationException("TODO New");
+          //throw new UnsupportedOperationException("TODO New");
           // call newObject with an INVOKESTATIC
+            mv.visitInsn(ACONST_NULL);
+            mv.visitMethodInsn(INVOKESTATIC, JSOBJECT, "newObject"
+                    , "(L" + JSOBJECT + ";)L"
+                    + JSOBJECT + ";", false);
           // for each initialization expression
-            // generate a string with the key
-            // call register on the JSObject
+            initMap.forEach( (key, expr) -> {
+                mv.visitInsn(DUP);
+                // generate a string with the key
+                mv.visitLdcInsn(key);
+                //visit
+                visit(expr, env, mv, dictionary);
+                // call register on the JSObject
+                mv.visitMethodInsn(INVOKEVIRTUAL, JSOBJECT, "register"
+                        , "(Ljava/lang/String;Ljava/lang/Object;)V", false);
+            });
         }
         case FieldAccess(Expr receiver, String name, int lineNumber) -> {
           throw new UnsupportedOperationException("TODO FieldAccess");
