@@ -75,20 +75,23 @@ public class RT {
   }
 
   public static Object bsm_fun(Lookup lookup, String name, Class<?> type, int funId) {
-    throw new UnsupportedOperationException("TODO bsm_fun");
-    //var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
-    //var globalEnv = classLoader.getGlobal();
-    //var fun = classLoader.getDictionary().lookupAndClear(funId);
-    //return ByteCodeRewriter.createFunction(fun.name().orElse("lambda"), fun.parameters(), fun.body(), globalEnv);
+    //throw new UnsupportedOperationException("TODO bsm_fun");
+    var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
+    var globalEnv = classLoader.getGlobal();
+    var fun = classLoader.getDictionary().lookupAndClear(funId);
+    return ByteCodeRewriter.createFunction(fun.optName().orElse("lambda"), fun.parameters(), fun.body(), globalEnv);
   }
 
   public static CallSite bsm_register(Lookup lookup, String name, MethodType type, String functionName) {
-    throw new UnsupportedOperationException("TODO bsm_register");
-    //var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
-    //var globalEnv = classLoader.getGlobal();
+    //throw new UnsupportedOperationException("TODO bsm_register");
+    var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
+    var globalEnv = classLoader.getGlobal();
     //get the REGISTER method handle
-    // use the global environment as first argument and the functionName as second argument
-    // create a constant callsite
+    var target = REGISTER;
+    //use the global environment as first argument and the functionName as second argument
+    target = insertArguments(target, 0, globalEnv, functionName);
+    //create a constant callsite
+    return new ConstantCallSite(target);
   }
 
   @SuppressWarnings("unused")  // used by a method handle
@@ -96,9 +99,11 @@ public class RT {
     return o != null && o != UNDEFINED && o != Boolean.FALSE;
   }
   public static CallSite bsm_truth(Lookup lookup, String name, MethodType type) {
-    throw new UnsupportedOperationException("TODO bsm_truth");
+    //throw new UnsupportedOperationException("TODO bsm_truth");
     // get the TRUTH method handle
+    var target = TRUTH;
     // create a constant callsite
+    return new ConstantCallSite(target);
   }
 
   public static CallSite bsm_get(Lookup lookup, String name, MethodType type, String fieldName) {
